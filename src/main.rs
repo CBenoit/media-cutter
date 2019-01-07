@@ -39,6 +39,14 @@ macro_rules! message_dialog {
     }};
 }
 
+macro_rules! get_widget {
+    ($builder:ident, $name:expr) => {
+        $builder
+            .get_object($name)
+            .expect(&format!("failed to get {} from builder", $name))
+    };
+}
+
 pub fn build_ui(application: &gtk::Application) {
     println!(
         "=> Gtk {}.{} detected",
@@ -51,86 +59,41 @@ pub fn build_ui(application: &gtk::Application) {
 
     let conf = Rc::new(RefCell::new(ffmpeg::Config::default()));
 
-    let window: gtk::ApplicationWindow = builder
-        .get_object("main_window")
-        .expect("failed to get main_window from builder");
+    let window: gtk::ApplicationWindow = get_widget!(builder, "main_window");
     window.set_application(application);
 
-    let dialog: gtk::AboutDialog = builder
-        .get_object("about_dialog")
-        .expect("failed to get about_dialog from builder");
+    let dialog: gtk::AboutDialog = get_widget!(builder, "about_dialog");
 
     let logo_buf = Pixbuf::new_from_inline(include_bytes!("../ui/logo.inline"), false).unwrap();
     dialog.set_logo(Some(&logo_buf));
 
-    let quit_menu_item: gtk::MenuItem = builder
-        .get_object("quit_menu_item")
-        .expect("failed to get quit_menu_item from builder");
-    let about_menu_item: gtk::MenuItem = builder
-        .get_object("about_menu_item")
-        .expect("failed to get about_menu_item from builder");
+    let quit_menu_item: gtk::MenuItem = get_widget!(builder, "quit_menu_item");
+    let about_menu_item: gtk::MenuItem = get_widget!(builder, "about_menu_item");
 
-    let select_input_button: gtk::Button = builder
-        .get_object("select_input_button")
-        .expect("failed to get select_input_button from builder");
-    let input_file_entry: gtk::Entry = builder
-        .get_object("input_file_entry")
-        .expect("failed to get input_file_entry from builder");
-    let select_output_button: gtk::Button = builder
-        .get_object("select_output_button")
-        .expect("failed to get select_output_button from builder");
-    let output_file_entry: gtk::Entry = builder
-        .get_object("output_file_entry")
-        .expect("failed to get output_file_entry from builder");
+    let select_input_button: gtk::Button = get_widget!(builder, "select_input_button");
+    let input_file_entry: gtk::Entry = get_widget!(builder, "input_file_entry");
+    let select_output_button: gtk::Button = get_widget!(builder, "select_output_button");
+    let output_file_entry: gtk::Entry = get_widget!(builder, "output_file_entry");
 
-    let ignore_video_check: gtk::CheckButton = builder
-        .get_object("ignore_video_check")
-        .expect("failed to get ignore_video_check from builder");
-    let ignore_audio_check: gtk::CheckButton = builder
-        .get_object("ignore_audio_check")
-        .expect("failed to get ignore_audio_check from builder");
-    let peak_normalization_check: gtk::CheckButton = builder
-        .get_object("peak_normalization_check")
-        .expect("failed to get peak_normalization_check from builder");
-    let overidde_existing_check: gtk::CheckButton = builder
-        .get_object("overidde_check")
-        .expect("failed to get overidde_check from builder");
-    let high_pass_check: gtk::CheckButton = builder
-        .get_object("high_pass_check")
-        .expect("failed to get high_pass_check from builder");
-    let low_pass_check: gtk::CheckButton = builder
-        .get_object("low_pass_check")
-        .expect("failed to get low_pass_check from builder");
-    let noise_reduc_check: gtk::CheckButton = builder
-        .get_object("noise_reduc_check")
-        .expect("failed to get noise_reduc_check from builder");
+    let ignore_video_check: gtk::CheckButton = get_widget!(builder, "ignore_video_check");
+    let ignore_audio_check: gtk::CheckButton = get_widget!(builder, "ignore_audio_check");
+    let peak_normalization_check: gtk::CheckButton =
+        get_widget!(builder, "peak_normalization_check");
+    let overidde_existing_check: gtk::CheckButton = get_widget!(builder, "overidde_check");
+    let high_pass_check: gtk::CheckButton = get_widget!(builder, "high_pass_check");
+    let low_pass_check: gtk::CheckButton = get_widget!(builder, "low_pass_check");
+    let noise_reduc_check: gtk::CheckButton = get_widget!(builder, "noise_reduc_check");
 
-    let noise_file_entry: gtk::Entry = builder
-        .get_object("noise_file_entry")
-        .expect("failed to get noise_file_entry from builder");
-    let select_noise_button: gtk::Button = builder
-        .get_object("select_noise_button")
-        .expect("failed to get select_noise_button from builder");
+    let noise_file_entry: gtk::Entry = get_widget!(builder, "noise_file_entry");
+    let select_noise_button: gtk::Button = get_widget!(builder, "select_noise_button");
 
-    let high_pass_freq_adj: gtk::Adjustment = builder
-        .get_object("high_pass_freq_adj")
-        .expect("failed to get high_pass_freq_adj from builder");
-    let low_pass_freq_adj: gtk::Adjustment = builder
-        .get_object("low_pass_freq_adj")
-        .expect("failed to get low_pass_freq_adj from builder");
-    let start_secs_adj: gtk::Adjustment = builder
-        .get_object("start_secs_adj")
-        .expect("failed to get start_secs_adj from builder");
-    let end_secs_adj: gtk::Adjustment = builder
-        .get_object("end_secs_adj")
-        .expect("failed to get end_secs_adj from builder");
+    let high_pass_freq_adj: gtk::Adjustment = get_widget!(builder, "high_pass_freq_adj");
+    let low_pass_freq_adj: gtk::Adjustment = get_widget!(builder, "low_pass_freq_adj");
+    let start_secs_adj: gtk::Adjustment = get_widget!(builder, "start_secs_adj");
+    let end_secs_adj: gtk::Adjustment = get_widget!(builder, "end_secs_adj");
 
-    let process_button: gtk::Button = builder
-        .get_object("process_button")
-        .expect("failed to get process_button from builder");
-    let preview_button: gtk::Button = builder
-        .get_object("preview_button")
-        .expect("failed to get preview_button from builder");
+    let process_button: gtk::Button = get_widget!(builder, "process_button");
+    let preview_button: gtk::Button = get_widget!(builder, "preview_button");
 
     let update_conf = Rc::new(clone!(conf,
                              input_file_entry,
