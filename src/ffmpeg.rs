@@ -3,7 +3,7 @@ use std::process::Stdio;
 
 use chrono::Duration;
 
-use crate::duration_to_string;
+use crate::{build_args_string, duration_to_string};
 
 pub type Result<T> = std::result::Result<T, String>;
 
@@ -43,13 +43,6 @@ impl Default for Config {
     }
 }
 
-fn build_command_str(args: &Vec<String>) -> String {
-    args.iter()
-        .map(|arg| format!(r#""{}""#, arg))
-        .collect::<Vec<String>>()
-        .join(" ")
-}
-
 pub fn run(conf: &Config) -> Result<()> {
     let args = make_args(conf)?;
 
@@ -66,7 +59,7 @@ pub fn run(conf: &Config) -> Result<()> {
                 "Failed to start: {}\nCommand was: {} {}",
                 err,
                 command_name,
-                build_command_str(&args)
+                build_args_string(&args[..])
             )
         })?;
 
@@ -78,7 +71,7 @@ pub fn run(conf: &Config) -> Result<()> {
                 "⚠ {} exited with non-zero status code: {}\nArguments were: {}\n\nError output: {}",
                 command_name,
                 code,
-                build_command_str(&args),
+                build_args_string(&args[..]),
                 String::from_utf8_lossy(&output.stderr)
             )),
             None => Err(format!("⚠ {} terminated by signal", command_name)),

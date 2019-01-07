@@ -32,7 +32,7 @@ macro_rules! message_dialog {
             gtk::DialogFlags::MODAL,
             $type,
             gtk::ButtonsType::Ok,
-            &$msg,
+            $msg,
         );
         dialog.run();
         dialog.destroy();
@@ -146,8 +146,8 @@ pub fn build_ui(application: &gtk::Application) {
                              low_pass_freq_adj => move || {
         conf.borrow_mut().input_file = input_file_entry.get_text().unwrap();
         conf.borrow_mut().output_file = output_file_entry.get_text().unwrap();
-        conf.borrow_mut().from_time = Duration::seconds(start_secs_adj.get_value() as i64);
-        conf.borrow_mut().to_time = Duration::seconds(end_secs_adj.get_value() as i64);
+        conf.borrow_mut().from_time = Duration::milliseconds((start_secs_adj.get_value() * 1000.0) as i64);
+        conf.borrow_mut().to_time = Duration::milliseconds((end_secs_adj.get_value() * 1000.0) as i64);
         conf.borrow_mut().ignore_video = ignore_video_check.get_active();
         conf.borrow_mut().ignore_audio = ignore_audio_check.get_active();
         conf.borrow_mut().allow_overidde = overidde_existing_check.get_active();
