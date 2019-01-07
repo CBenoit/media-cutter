@@ -13,7 +13,3 @@ gdk-pixbuf = "0.5.0"
 cpal = "0.8.2"
 chrono = "0.4"
 
-[profile.release]
-lto = true
-codegen-units = 1
-
