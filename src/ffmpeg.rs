@@ -34,7 +34,7 @@ impl Default for Config {
             from_time: Duration::seconds(0),
             to_time: Duration::seconds(0),
             preview: false,
-            allow_overidde: true,
+            allow_overidde: false,
             ignore_video: false,
             ignore_audio: false,
             high_pass_filter: None,

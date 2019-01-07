@@ -92,6 +92,9 @@ pub fn build_ui(application: &gtk::Application) {
     let peak_normalization_check: gtk::CheckButton = builder
         .get_object("peak_normalization_check")
         .expect("failed to get peak_normalization_check from builder");
+    let overidde_existing_check: gtk::CheckButton = builder
+        .get_object("overidde_check")
+        .expect("failed to get overidde_check from builder");
     let high_pass_check: gtk::CheckButton = builder
         .get_object("high_pass_check")
         .expect("failed to get high_pass_check from builder");
@@ -136,6 +139,7 @@ pub fn build_ui(application: &gtk::Application) {
                              end_secs_adj,
                              ignore_audio_check,
                              ignore_video_check,
+                             overidde_existing_check,
                              high_pass_check,
                              low_pass_check,
                              high_pass_freq_adj,
@@ -146,6 +150,7 @@ pub fn build_ui(application: &gtk::Application) {
         conf.borrow_mut().to_time = Duration::seconds(end_secs_adj.get_value() as i64);
         conf.borrow_mut().ignore_video = ignore_video_check.get_active();
         conf.borrow_mut().ignore_audio = ignore_audio_check.get_active();
+        conf.borrow_mut().allow_overidde = overidde_existing_check.get_active();
 
         conf.borrow_mut().low_pass_filter = if low_pass_check.get_active() {
             Some(low_pass_freq_adj.get_value() as u32)
