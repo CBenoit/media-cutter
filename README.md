@@ -36,7 +36,7 @@ I might add a way to manually specify path to executables later though.
 Thanks to the Rust package manager, `cargo`, building is as simple as executing
 
 ```
-cargo build --release
+$ cargo build --release
 ```
 
 inside the project directory.
@@ -49,7 +49,7 @@ If you need to install the rust compiler and cargo, see [rustup](https://github.
 command to discard object files from the executable and get its size under 1M.
 
 ```
-strip target/release/media_cutter
+$ strip target/release/media_cutter
 ```
 
 ## Pre-built binaries
@@ -63,7 +63,7 @@ On *Linux*, simply copy/move the executable in a folder present in the `$PATH` e
 
 ## TODO
 
-- open error dialog on error on error command return status.
+- open error dialog on error command return status.
 - checkbutton to enable forced overidde of existing file
 - peak normalization
 - noise reduction with sox
