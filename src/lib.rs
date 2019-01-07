@@ -2,6 +2,21 @@ use chrono::Duration;
 
 pub mod ffmpeg;
 
+#[macro_export]
+macro_rules! message_dialog {
+    ($win:ident, $type:path, $msg:expr) => {{
+        let dialog = MessageDialog::new(
+            Some(&$win),
+            gtk::DialogFlags::MODAL,
+            $type,
+            gtk::ButtonsType::Ok,
+            $msg,
+        );
+        dialog.run();
+        dialog.destroy();
+    }};
+}
+
 // upgrade weak reference or return
 #[macro_export]
 macro_rules! upgrade_weak {
@@ -33,6 +48,15 @@ macro_rules! clone {
             move |$(clone!(@param $p),)+| $body
         }
     );
+}
+
+#[macro_export]
+macro_rules! get_widget {
+    ($builder:ident, $name:expr) => {
+        $builder
+            .get_object($name)
+            .expect(&format!("failed to get {} from builder", $name))
+    };
 }
 
 fn duration_to_string(time: Duration) -> String {

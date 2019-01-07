@@ -25,28 +25,6 @@ fn main() {
     application.run(&args().collect::<Vec<_>>());
 }
 
-macro_rules! message_dialog {
-    ($win:ident, $type:path, $msg:expr) => {{
-        let dialog = MessageDialog::new(
-            Some(&$win),
-            gtk::DialogFlags::MODAL,
-            $type,
-            gtk::ButtonsType::Ok,
-            $msg,
-        );
-        dialog.run();
-        dialog.destroy();
-    }};
-}
-
-macro_rules! get_widget {
-    ($builder:ident, $name:expr) => {
-        $builder
-            .get_object($name)
-            .expect(&format!("failed to get {} from builder", $name))
-    };
-}
-
 pub fn build_ui(application: &gtk::Application) {
     println!(
         "=> Gtk {}.{} detected",
