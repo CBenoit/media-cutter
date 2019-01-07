@@ -35,7 +35,7 @@ pub fn build_ui(application: &gtk::Application) {
     let glade_src = include_str!("../ui/main.glade");
     let builder = gtk::Builder::new_from_string(glade_src);
 
-    let conf = Rc::new(RefCell::new(ffmpeg::Config::default()));
+    let conf = Rc::new(RefCell::new(Config::default()));
 
     let window: gtk::ApplicationWindow = get_widget!(builder, "main_window");
     window.set_application(application);
@@ -84,7 +84,8 @@ pub fn build_ui(application: &gtk::Application) {
                              high_pass_check,
                              low_pass_check,
                              high_pass_freq_adj,
-                             low_pass_freq_adj => move || {
+                             low_pass_freq_adj,
+                             peak_normalization_check => move || {
         conf.borrow_mut().input_file = input_file_entry.get_text().unwrap();
         conf.borrow_mut().output_file = output_file_entry.get_text().unwrap();
         conf.borrow_mut().from_time = Duration::milliseconds((start_secs_adj.get_value() * 1000.0) as i64);
@@ -92,6 +93,7 @@ pub fn build_ui(application: &gtk::Application) {
         conf.borrow_mut().ignore_video = ignore_video_check.get_active();
         conf.borrow_mut().ignore_audio = ignore_audio_check.get_active();
         conf.borrow_mut().allow_overidde = overidde_existing_check.get_active();
+        conf.borrow_mut().peak_normalization = peak_normalization_check.get_active();
 
         conf.borrow_mut().low_pass_filter = if low_pass_check.get_active() {
             Some(low_pass_freq_adj.get_value() as u32)
@@ -140,7 +142,7 @@ pub fn build_ui(application: &gtk::Application) {
             update_conf();
             conf.borrow_mut().preview = false;
 
-            match ffmpeg::run(&conf.borrow()) {
+            match processing::run(&conf.borrow()) {
                 Ok(_) => message_dialog!(window, gtk::MessageType::Info, "Operation suceeded!"),
                 Err(e) => message_dialog!(window, gtk::MessageType::Error, &e),
             }
@@ -161,7 +163,7 @@ pub fn build_ui(application: &gtk::Application) {
         update_conf();
         conf.borrow_mut().preview = true;
 
-        match ffmpeg::run(&conf.borrow()) {
+        match processing::run(&conf.borrow()) {
             Ok(_) => (),
             Err(e) => message_dialog!(window, gtk::MessageType::Error, &e),
         }

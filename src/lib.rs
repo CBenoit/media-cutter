@@ -1,6 +1,6 @@
 use chrono::Duration;
 
-pub mod ffmpeg;
+pub mod processing;
 
 #[macro_export]
 macro_rules! message_dialog {
@@ -80,6 +80,44 @@ where
         .join(" ")
 }
 
+pub struct Config {
+    pub preview: bool,
+    pub input_file: String,
+    pub output_file: String,
+    pub from_time: Duration,
+    pub to_time: Duration,
+    pub high_pass_filter: Option<u32>,
+    pub low_pass_filter: Option<u32>,
+    pub allow_overidde: bool,
+    pub ignore_video: bool,
+    pub ignore_audio: bool,
+    pub peak_normalization: bool,
+}
+
+impl Config {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            preview: false,
+            input_file: String::from(""),
+            output_file: String::from(""),
+            from_time: Duration::seconds(0),
+            to_time: Duration::seconds(0),
+            high_pass_filter: None,
+            low_pass_filter: None,
+            allow_overidde: false,
+            ignore_video: false,
+            ignore_audio: false,
+            peak_normalization: false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -99,7 +137,7 @@ mod test {
     }
 
     #[test]
-    fn build_args_string() {
+    fn build_args() {
         assert_eq!(
             build_args_string(&["-l", "-h", "a/path"]),
             r#""-l" "-h" "a/path""#

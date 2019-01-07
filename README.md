@@ -28,7 +28,7 @@ the boiler-plate code required to handle ownership and borrowing in the numerous
 Present software was used and tested only on *Linux*.
 It might works on Windows too, but since aformentioned tools are directly used
 by command line you might get some `command not found` troubles.
-Hint: make sure executables are accessibles using the %PATH%.
+Hint: make sure executables are accessibles using the `%PATH%`.
 I might add a way to manually specify path to executables later though.
 
 ## Building
@@ -63,6 +63,6 @@ On *Linux*, simply copy/move the executable in a folder present in the `$PATH` e
 
 ## TODO
 
-- peak normalization
+- volume amplification and attenuation
 - noise reduction with sox
 
