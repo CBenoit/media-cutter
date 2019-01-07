@@ -43,33 +43,47 @@ impl Default for Config {
     }
 }
 
+fn build_command_str(args: &Vec<String>) -> String {
+    args.iter()
+        .map(|arg| format!(r#""{}""#, arg))
+        .collect::<Vec<String>>()
+        .join(" ")
+}
+
 pub fn run(conf: &Config) -> Result<()> {
     let args = make_args(conf)?;
 
     let command_name = if conf.preview { "ffplay" } else { "ffmpeg" };
 
-    let mut child = Command::new(command_name)
+    let output = Command::new(command_name)
         .args(&args[..])
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
-        .spawn()
+        .stderr(Stdio::piped())
+        .output()
         .map_err(|err| {
             format!(
-                "Failed to start: {}\nCommand: {} {}",
+                "Failed to start: {}\nCommand was: {} {}",
                 err,
                 command_name,
-                args.iter()
-                    .map(|arg| format!(r#""{}""#, arg))
-                    .collect::<Vec<String>>()
-                    .join(" ")
+                build_command_str(&args)
             )
         })?;
 
-    child
-        .wait()
-        .map_err(|err| format!("Could not wait for child process: {}", err))?;
-
-    Ok(())
+    if output.status.success() {
+        Ok(())
+    } else {
+        match output.status.code() {
+            Some(code) => Err(format!(
+                "⚠ {} exited with non-zero status code: {}\nArguments were: {}\n\nError output: {}",
+                command_name,
+                code,
+                build_command_str(&args),
+                String::from_utf8_lossy(&output.stderr)
+            )),
+            None => Err(format!("⚠ {} terminated by signal", command_name)),
+        }
+    }
 }
 
 pub fn make_args(conf: &Config) -> Result<Vec<String>> {

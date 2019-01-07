@@ -63,7 +63,6 @@ On *Linux*, simply copy/move the executable in a folder present in the `$PATH` e
 
 ## TODO
 
-- open error dialog on error command return status.
 - checkbutton to enable forced overidde of existing file
 - peak normalization
 - noise reduction with sox
