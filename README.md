@@ -1,3 +1,6 @@
+
+![Media Cutter's logo](./ui/logo.png)
+
 # Media Cutter
 
 Licensed under the MIT license.
