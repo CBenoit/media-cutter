@@ -92,6 +92,7 @@ pub struct Config {
     pub ignore_video: bool,
     pub ignore_audio: bool,
     pub peak_normalization: bool,
+    pub volume_change: f64,
 }
 
 impl Config {
@@ -114,6 +115,7 @@ impl Default for Config {
             ignore_video: false,
             ignore_audio: false,
             peak_normalization: false,
+            volume_change: 0.0,
         }
     }
 }

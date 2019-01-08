@@ -69,6 +69,7 @@ pub fn build_ui(application: &gtk::Application) {
     let low_pass_freq_adj: gtk::Adjustment = get_widget!(builder, "low_pass_freq_adj");
     let start_secs_adj: gtk::Adjustment = get_widget!(builder, "start_secs_adj");
     let end_secs_adj: gtk::Adjustment = get_widget!(builder, "end_secs_adj");
+    let volume_adj: gtk::Adjustment = get_widget!(builder, "volume_adj");
 
     let process_button: gtk::Button = get_widget!(builder, "process_button");
     let preview_button: gtk::Button = get_widget!(builder, "preview_button");
@@ -94,6 +95,7 @@ pub fn build_ui(application: &gtk::Application) {
         conf.borrow_mut().ignore_audio = ignore_audio_check.get_active();
         conf.borrow_mut().allow_overidde = overidde_existing_check.get_active();
         conf.borrow_mut().peak_normalization = peak_normalization_check.get_active();
+        conf.borrow_mut().volume_change = volume_adj.get_value();
 
         conf.borrow_mut().low_pass_filter = if low_pass_check.get_active() {
             Some(low_pass_freq_adj.get_value() as u32)

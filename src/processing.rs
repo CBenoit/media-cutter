@@ -1,4 +1,4 @@
-use std::process::{Stdio, Output, Command};
+use std::process::{Command, Output, Stdio};
 use std::str::from_utf8;
 
 use lazy_static::lazy_static;
@@ -9,7 +9,8 @@ use crate::{build_args_string, duration_to_string, Config};
 pub type Result<T> = std::result::Result<T, String>;
 
 lazy_static! {
-    static ref MAX_VOLUME_RE: Regex = Regex::new(r#"max_volume:\s*(?P<max>-?[0-9\.]+)\s*dB"#).unwrap();
+    static ref MAX_VOLUME_RE: Regex =
+        Regex::new(r#"max_volume:\s*(?P<max>-?[0-9\.]+)\s*dB"#).unwrap();
 }
 
 pub fn run(conf: &Config) -> Result<()> {
@@ -18,7 +19,8 @@ pub fn run(conf: &Config) -> Result<()> {
         let args = make_detect_max_volume_args(conf);
         let output = run_command_and_get_output("ffmpeg", &args)?;
         if let Some(caps) = MAX_VOLUME_RE.captures(from_utf8(&output.stderr).unwrap()) {
-            state.max_volume_db = Some(caps["max"].parse::<f32>().unwrap());
+            // pattern matched by the regex should be parsable into f64, hence unwrap.
+            state.max_volume_db = Some(caps["max"].parse::<f64>().unwrap());
         }
     }
 
@@ -42,12 +44,14 @@ pub fn run(conf: &Config) -> Result<()> {
 }
 
 struct State {
-    max_volume_db: Option<f32>,
+    max_volume_db: Option<f64>,
 }
 
 impl Default for State {
     fn default() -> Self {
-        Self { max_volume_db: None }
+        Self {
+            max_volume_db: None,
+        }
     }
 }
 
@@ -123,6 +127,9 @@ fn make_processing_args(conf: &Config, state: &State) -> Vec<String> {
     args.push(String::from("-t"));
     args.push(duration_to_string(duration));
 
+    // == filters
+    args.push(String::from("-af")); // alias of -filter:a with ffmpeg but not with ffplay.
+
     let mut filters = Vec::with_capacity(3);
     if let Some(high) = conf.high_pass_filter {
         filters.push(format!("highpass=f={}", high));
@@ -130,14 +137,17 @@ fn make_processing_args(conf: &Config, state: &State) -> Vec<String> {
     if let Some(low) = conf.low_pass_filter {
         filters.push(format!("lowpass=f={}", low));
     }
-    if let Some(max_volume_db) = state.max_volume_db { // peak normalization
-        filters.push(format!("volume={}dB", -max_volume_db));
-    }
 
-    if !filters.is_empty() {
-        args.push(String::from("-filter:a"));
-        args.push(filters.join(","));
-    }
+    let volume_filter = if let Some(max_volume_db) = state.max_volume_db {
+        // peak normalization
+        conf.volume_change - max_volume_db
+    } else {
+        conf.volume_change
+    };
+    filters.push(format!("volume={}dB", volume_filter));
+
+    args.push(filters.join(","));
+    // == end filters
 
     if !conf.preview {
         args.push(conf.output_file.clone());

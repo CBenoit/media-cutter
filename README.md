@@ -63,6 +63,5 @@ On *Linux*, simply copy/move the executable in a folder present in the `$PATH` e
 
 ## TODO
 
-- volume amplification and attenuation
 - noise reduction with sox
 
