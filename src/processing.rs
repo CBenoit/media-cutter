@@ -18,6 +18,10 @@ lazy_static! {
         Regex::new(r#"max_volume:\s*(?P<max>-?[0-9\.]+)\s*dB"#).unwrap();
 }
 
+const FFMPEG_COMMAND: &'static str = "ffmpeg";
+const FFPLAY_COMMAND: &'static str = "ffplay";
+const SOX_COMMAND: &'static str = "sox";
+
 pub fn run(conf: &Config) -> Result<()> {
     let mut state = State::default();
 
@@ -30,55 +34,42 @@ pub fn run(conf: &Config) -> Result<()> {
             })?)
             .map_err(|e| format!("Could not create temporary directory.\nError: {}", e))?;
 
-            let sox_command = "sox";
-
             let child = command_map_error(
-                Command::new(sox_command)
+                Command::new(SOX_COMMAND)
                     .args(&sox_noise_profile_args[..])
                     .stdout(Stdio::piped())
                     .spawn(),
-                sox_command,
+                SOX_COMMAND,
                 &sox_noise_profile_args,
             )?;
 
-            command_map_error(
-                Command::new(sox_command)
+            let sox_output = command_map_error(
+                Command::new(SOX_COMMAND)
                     .args(&sox_clean_noise_args[..])
                     .stdin(child.stdout.unwrap())
                     .output(),
-                sox_command,
+                SOX_COMMAND,
                 &sox_clean_noise_args,
             )?;
+
+            output_map_error(&sox_output, SOX_COMMAND, &sox_clean_noise_args)?;
         }
     }
 
     if conf.peak_normalization {
         let args = make_ffmpeg_detect_max_volume_args(conf);
-        let output = run_command_and_get_output("ffmpeg", &args)?;
+        let output = run_command_and_get_output(FFMPEG_COMMAND, &args)?;
+        output_map_error(&output, FFMPEG_COMMAND, &args)?;
         if let Some(caps) = MAX_VOLUME_RE.captures(from_utf8(&output.stderr).unwrap()) {
             // pattern matched by the regex should be parsable into f64, hence unwrap.
             state.max_volume_db = Some(caps["max"].parse::<f64>().unwrap());
         }
     }
 
-    let command_name = if conf.preview { "ffplay" } else { "ffmpeg" };
+    let command_name = if conf.preview { FFPLAY_COMMAND } else { FFMPEG_COMMAND };
     let args = make_ffmpeg_processing_args(conf, &state);
     let output = run_command_and_get_output(command_name, &args)?;
-
-    if output.status.success() {
-        Ok(())
-    } else {
-        match output.status.code() {
-            Some(code) => Err(format!(
-                "⚠ {} exited with non-zero status code: {}\nArguments were: {}\n\nError output: {}",
-                command_name,
-                code,
-                build_args_string(&args),
-                String::from_utf8_lossy(&output.stderr)
-            )),
-            None => Err(format!("⚠ {} terminated by signal", command_name)),
-        }
-    }
+    output_map_error(&output, command_name, &args)
 }
 
 struct State {
@@ -111,6 +102,23 @@ where
             build_args_string(&args[..])
         )
     })
+}
+
+fn output_map_error(output: &Output, command_name: &str, args: &Vec<String>) -> Result<()> {
+    if output.status.success() {
+        Ok(())
+    } else {
+        match output.status.code() {
+            Some(code) => Err(format!(
+                "⚠ {} exited with non-zero status code: {}\n\nArguments were: {}\n\nError output: {}",
+                command_name,
+                code,
+                build_args_string(args),
+                String::from_utf8_lossy(&output.stderr)
+            )),
+            None => Err(format!("⚠ {} terminated by signal", command_name)),
+        }
+    }
 }
 
 fn run_command_and_get_output(command_name: &str, args: &Vec<String>) -> Result<Output> {
