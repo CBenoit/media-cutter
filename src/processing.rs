@@ -1,6 +1,6 @@
 use std::{
     env,
-    fs::create_dir_all,
+    fs::{create_dir_all, remove_file},
     path::PathBuf,
     process::{Command, Output, Stdio},
     str::from_utf8,
@@ -11,7 +11,7 @@ use regex::Regex;
 
 use crate::{build_args_string, duration_to_string, Config};
 
-pub type Result<T> = std::result::Result<T, String>;
+type Result<T> = std::result::Result<T, String>;
 
 lazy_static! {
     static ref MAX_VOLUME_RE: Regex =
@@ -21,39 +21,66 @@ lazy_static! {
 const FFMPEG_COMMAND: &'static str = "ffmpeg";
 const FFPLAY_COMMAND: &'static str = "ffplay";
 const SOX_COMMAND: &'static str = "sox";
+const TMP_DIRECTORY: &'static str = "media_cutter_tmp";
+
+struct State {
+    max_volume_db: Option<f64>,
+    sox_output_file: Option<String>,
+    already_trimed: bool,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            max_volume_db: None,
+            sox_output_file: None,
+            already_trimed: false,
+        }
+    }
+}
 
 pub fn run(conf: &Config) -> Result<()> {
     let mut state = State::default();
 
     if conf.noise_profile_file.is_some() && conf.noise_reduction_amount.is_some() {
-        let sox_noise_profile_args = make_sox_generate_noiseprof_args(conf)?;
-        let sox_clean_noise_args = make_sox_clean_noise_args(conf, &mut state)?;
-        if let Some(ref tmp_file_output) = state.sox_temporary_file_output {
-            create_dir_all(tmp_file_output.parent().ok_or_else(|| {
-                String::from("Unexpected error: couldn't create temporary directory")
-            })?)
+        let mut tmp_dir = env::temp_dir();
+        tmp_dir.push(TMP_DIRECTORY);
+        create_dir_all(&tmp_dir)
             .map_err(|e| format!("Could not create temporary directory.\nError: {}", e))?;
 
-            let child = command_map_error(
-                Command::new(SOX_COMMAND)
-                    .args(&sox_noise_profile_args[..])
-                    .stdout(Stdio::piped())
-                    .spawn(),
-                SOX_COMMAND,
-                &sox_noise_profile_args,
-            )?;
-
-            let sox_output = command_map_error(
-                Command::new(SOX_COMMAND)
-                    .args(&sox_clean_noise_args[..])
-                    .stdin(child.stdout.unwrap())
-                    .output(),
-                SOX_COMMAND,
-                &sox_clean_noise_args,
-            )?;
-            output_map_error(&sox_output, SOX_COMMAND, &sox_clean_noise_args)?;
-            state.already_trimed = true;
+        let input_file_pathbuf = PathBuf::from(conf.input_file.clone());
+        match input_file_pathbuf.file_name() {
+            Some(filename) => tmp_dir.push(filename),
+            None => {
+                return Err(String::from("Error: no input file provided."));
+            }
         }
+        let sox_output_file = tmp_dir.to_string_lossy().into_owned();
+
+        let sox_noise_profile_args = make_sox_generate_noiseprof_args(conf)?;
+        let sox_clean_noise_args = make_sox_clean_noise_args(conf, &sox_output_file)?;
+
+        let child = command_map_error(
+            Command::new(SOX_COMMAND)
+                .args(&sox_noise_profile_args[..])
+                .stdout(Stdio::piped())
+                .spawn(),
+            SOX_COMMAND,
+            &sox_noise_profile_args,
+        )?;
+
+        let sox_output = command_map_error(
+            Command::new(SOX_COMMAND)
+                .args(&sox_clean_noise_args[..])
+                .stdin(child.stdout.unwrap())
+                .output(),
+            SOX_COMMAND,
+            &sox_clean_noise_args,
+        )?;
+        output_map_error(&sox_output, SOX_COMMAND, &sox_clean_noise_args)?;
+
+        state.sox_output_file = Some(sox_output_file);
+        state.already_trimed = true;
     }
 
     if conf.peak_normalization {
@@ -66,26 +93,22 @@ pub fn run(conf: &Config) -> Result<()> {
         }
     }
 
-    let command_name = if conf.preview { FFPLAY_COMMAND } else { FFMPEG_COMMAND };
+    let command_name = if conf.preview {
+        FFPLAY_COMMAND
+    } else {
+        FFMPEG_COMMAND
+    };
     let args = make_ffmpeg_processing_args(conf, &state);
     let output = run_command_and_get_output(command_name, &args)?;
-    output_map_error(&output, command_name, &args)
-}
+    output_map_error(&output, command_name, &args)?;
 
-struct State {
-    max_volume_db: Option<f64>,
-    sox_temporary_file_output: Option<PathBuf>,
-    already_trimed: bool,
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self {
-            max_volume_db: None,
-            sox_temporary_file_output: None,
-            already_trimed: false,
-        }
+    if let Some(sox_output_file) = state.sox_output_file {
+        // clean temporary file
+        remove_file(sox_output_file)
+            .map_err(|e| format!("Could not delete temporary file.\nError: {}", e))?;
     }
+
+    Ok(())
 }
 
 fn command_map_error<T, E>(
@@ -152,24 +175,11 @@ fn make_sox_generate_noiseprof_args(conf: &Config) -> Result<Vec<String>> {
     Ok(args)
 }
 
-fn make_sox_clean_noise_args(conf: &Config, state: &mut State) -> Result<Vec<String>> {
-    let mut dir = env::temp_dir();
-    dir.push("media_cutter");
-    let input_file_pathbuf = PathBuf::from(conf.input_file.clone());
-    match input_file_pathbuf.file_name() {
-        Some(filename) => dir.push(filename),
-        None => {
-            return Err(String::from("Error: no input file provided."));
-        }
-    }
-    let output_file = dir.to_string_lossy().into_owned();
-
-    state.sox_temporary_file_output = Some(dir);
-
+fn make_sox_clean_noise_args(conf: &Config, sox_output_file: &str) -> Result<Vec<String>> {
     let mut args = Vec::with_capacity(5);
 
     args.push(conf.input_file.clone()); // input file
-    args.push(output_file); // output file
+    args.push(sox_output_file.to_string()); // output file
 
     // trim the file with sox for increased noise reduction process speed
     let duration = conf.to_time - conf.from_time;
@@ -187,6 +197,7 @@ fn make_sox_clean_noise_args(conf: &Config, state: &mut State) -> Result<Vec<Str
             ));
         }
     }
+
     Ok(args)
 }
 
@@ -229,12 +240,12 @@ fn make_ffmpeg_processing_args(conf: &Config, state: &State) -> Vec<String> {
     }
 
     args.push(String::from("-i"));
-    if let Some(ref sox_output_file) = state.sox_temporary_file_output {
-        // use sox output file if applicable
-        args.push(sox_output_file.to_string_lossy().into_owned());
+    let output_file = if let Some(ref sox_output_file) = state.sox_output_file {
+        sox_output_file.clone() // use sox output file if applicable
     } else {
-        args.push(conf.input_file.clone());
-    }
+        conf.input_file.clone()
+    };
+    args.push(output_file);
 
     if conf.ignore_video {
         args.push(String::from("-vn"));
