@@ -51,8 +51,8 @@ pub fn run(conf: &Config) -> Result<()> {
                 SOX_COMMAND,
                 &sox_clean_noise_args,
             )?;
-
             output_map_error(&sox_output, SOX_COMMAND, &sox_clean_noise_args)?;
+            state.already_trimed = true;
         }
     }
 
@@ -75,6 +75,7 @@ pub fn run(conf: &Config) -> Result<()> {
 struct State {
     max_volume_db: Option<f64>,
     sox_temporary_file_output: Option<PathBuf>,
+    already_trimed: bool,
 }
 
 impl Default for State {
@@ -82,6 +83,7 @@ impl Default for State {
         Self {
             max_volume_db: None,
             sox_temporary_file_output: None,
+            already_trimed: false,
         }
     }
 }
@@ -165,8 +167,16 @@ fn make_sox_clean_noise_args(conf: &Config, state: &mut State) -> Result<Vec<Str
     state.sox_temporary_file_output = Some(dir);
 
     let mut args = Vec::with_capacity(5);
+
     args.push(conf.input_file.clone()); // input file
     args.push(output_file); // output file
+
+    // trim the file with sox for increased noise reduction process speed
+    let duration = conf.to_time - conf.from_time;
+    args.push(String::from("trim"));
+    args.push(duration_to_string(conf.from_time));
+    args.push(duration_to_string(duration));
+
     args.push(String::from("noisered"));
     args.push(String::from("-")); // take noise profile from stdin
     match conf.noise_reduction_amount {
@@ -234,11 +244,14 @@ fn make_ffmpeg_processing_args(conf: &Config, state: &State) -> Vec<String> {
         args.push(String::from("-an"));
     }
 
-    let duration = conf.to_time - conf.from_time;
-    args.push(String::from("-ss"));
-    args.push(duration_to_string(conf.from_time));
-    args.push(String::from("-t"));
-    args.push(duration_to_string(duration));
+    if !state.already_trimed {
+        // input file may already be trimed by sox
+        let duration = conf.to_time - conf.from_time;
+        args.push(String::from("-ss"));
+        args.push(duration_to_string(conf.from_time));
+        args.push(String::from("-t"));
+        args.push(duration_to_string(duration));
+    }
 
     // == filters
     args.push(String::from("-af")); // alias of -filter:a with ffmpeg but not with ffplay.
