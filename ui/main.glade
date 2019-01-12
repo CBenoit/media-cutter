@@ -463,6 +463,7 @@
                       <object class="GtkSpinButton">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">Specifies how much noise should be removed by this amount between 0 and 1. Higher numbers will remove more noise but present a greater likelihood of removing wanted components of the audio signal.</property>
                         <property name="margin_right">167</property>
                         <property name="input_purpose">number</property>
                         <property name="adjustment">sox_amount_adj</property>
