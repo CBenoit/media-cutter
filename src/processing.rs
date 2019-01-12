@@ -18,10 +18,10 @@ lazy_static! {
         Regex::new(r#"max_volume:\s*(?P<max>-?[0-9\.]+)\s*dB"#).unwrap();
 }
 
-const FFMPEG_COMMAND: &'static str = "ffmpeg";
-const FFPLAY_COMMAND: &'static str = "ffplay";
-const SOX_COMMAND: &'static str = "sox";
-const TMP_DIRECTORY: &'static str = "media_cutter_tmp";
+const FFMPEG_COMMAND: &str = "ffmpeg";
+const FFPLAY_COMMAND: &str = "ffplay";
+const SOX_COMMAND: &str = "sox";
+const TMP_DIRECTORY: &str = "media_cutter_tmp";
 
 struct State {
     max_volume_db: Option<f64>,
@@ -114,7 +114,7 @@ pub fn run(conf: &Config) -> Result<()> {
 fn command_map_error<T, E>(
     result: std::result::Result<T, E>,
     command_name: &str,
-    args: &Vec<String>,
+    args: &[String],
 ) -> Result<T>
 where
     E: std::fmt::Display,
@@ -129,7 +129,7 @@ where
     })
 }
 
-fn output_map_error(output: &Output, command_name: &str, args: &Vec<String>) -> Result<()> {
+fn output_map_error(output: &Output, command_name: &str, args: &[String]) -> Result<()> {
     if output.status.success() {
         Ok(())
     } else {
@@ -146,7 +146,7 @@ fn output_map_error(output: &Output, command_name: &str, args: &Vec<String>) -> 
     }
 }
 
-fn run_command_and_get_output(command_name: &str, args: &Vec<String>) -> Result<Output> {
+fn run_command_and_get_output(command_name: &str, args: &[String]) -> Result<Output> {
     command_map_error(
         Command::new(command_name).args(&args[..]).output(),
         command_name,

@@ -125,7 +125,7 @@ pub fn build_ui(application: &gtk::Application) {
     select_input_button.connect_clicked(move |_| {
         let window = upgrade_weak!(window_weak);
         let input_file_entry = upgrade_weak!(input_file_entry_weak);
-        handle_select_file(window, input_file_entry, gtk::FileChooserAction::Open);
+        handle_select_file(&window, &input_file_entry, gtk::FileChooserAction::Open);
     });
 
     let window_weak = window.downgrade();
@@ -133,7 +133,7 @@ pub fn build_ui(application: &gtk::Application) {
     select_output_button.connect_clicked(move |_| {
         let window = upgrade_weak!(window_weak);
         let output_file_entry = upgrade_weak!(output_file_entry_weak);
-        handle_select_file(window, output_file_entry, gtk::FileChooserAction::Save);
+        handle_select_file(&window, &output_file_entry, gtk::FileChooserAction::Save);
     });
 
     let window_weak = window.downgrade();
@@ -141,7 +141,7 @@ pub fn build_ui(application: &gtk::Application) {
     select_noise_button.connect_clicked(move |_| {
         let window = upgrade_weak!(window_weak);
         let noise_file_entry = upgrade_weak!(noise_file_entry_weak);
-        handle_select_file(window, noise_file_entry, gtk::FileChooserAction::Open);
+        handle_select_file(&window, &noise_file_entry, gtk::FileChooserAction::Open);
     });
 
     process_button.connect_clicked(
@@ -207,12 +207,12 @@ pub fn build_ui(application: &gtk::Application) {
 }
 
 fn handle_select_file(
-    window: gtk::ApplicationWindow,
-    entry: gtk::Entry,
+    window: &gtk::ApplicationWindow,
+    entry: &gtk::Entry,
     dialog_action: gtk::FileChooserAction,
 ) {
     let file_chooser =
-        gtk::FileChooserDialog::new(Some("Select File"), Some(&window), dialog_action);
+        gtk::FileChooserDialog::new(Some("Select File"), Some(window), dialog_action);
 
     file_chooser.add_buttons(&[
         ("Select", gtk::ResponseType::Ok.into()),
