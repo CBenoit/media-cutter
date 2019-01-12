@@ -93,6 +93,8 @@ pub struct Config {
     pub ignore_audio: bool,
     pub peak_normalization: bool,
     pub volume_change: f64,
+    pub noise_profile_file: Option<String>,
+    pub noise_reduction_amount: Option<f64>,
 }
 
 impl Config {
@@ -116,12 +118,14 @@ impl Default for Config {
             ignore_audio: false,
             peak_normalization: false,
             volume_change: 0.0,
+            noise_profile_file: None,
+            noise_reduction_amount: None,
         }
     }
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]

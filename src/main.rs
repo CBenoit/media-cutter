@@ -70,6 +70,7 @@ pub fn build_ui(application: &gtk::Application) {
     let start_secs_adj: gtk::Adjustment = get_widget!(builder, "start_secs_adj");
     let end_secs_adj: gtk::Adjustment = get_widget!(builder, "end_secs_adj");
     let volume_adj: gtk::Adjustment = get_widget!(builder, "volume_adj");
+    let sox_amount_adj: gtk::Adjustment = get_widget!(builder, "sox_amount_adj");
 
     let process_button: gtk::Button = get_widget!(builder, "process_button");
     let preview_button: gtk::Button = get_widget!(builder, "preview_button");
@@ -86,7 +87,8 @@ pub fn build_ui(application: &gtk::Application) {
                              low_pass_check,
                              high_pass_freq_adj,
                              low_pass_freq_adj,
-                             peak_normalization_check => move || {
+                             peak_normalization_check,
+                             noise_file_entry => move || {
         conf.borrow_mut().input_file = input_file_entry.get_text().unwrap();
         conf.borrow_mut().output_file = output_file_entry.get_text().unwrap();
         conf.borrow_mut().from_time = Duration::milliseconds((start_secs_adj.get_value() * 1000.0) as i64);
@@ -108,6 +110,14 @@ pub fn build_ui(application: &gtk::Application) {
         } else {
             None
         };
+
+        if noise_reduc_check.get_active() {
+            conf.borrow_mut().noise_profile_file = Some(noise_file_entry.get_text().unwrap());
+            conf.borrow_mut().noise_reduction_amount = Some(sox_amount_adj.get_value());
+        } else {
+            conf.borrow_mut().noise_profile_file = None;
+            conf.borrow_mut().noise_reduction_amount = None;
+        }
     }));
 
     let window_weak = window.downgrade();
@@ -124,6 +134,14 @@ pub fn build_ui(application: &gtk::Application) {
         let window = upgrade_weak!(window_weak);
         let output_file_entry = upgrade_weak!(output_file_entry_weak);
         handle_select_file(window, output_file_entry, gtk::FileChooserAction::Save);
+    });
+
+    let window_weak = window.downgrade();
+    let noise_file_entry_weak = noise_file_entry.downgrade();
+    select_noise_button.connect_clicked(move |_| {
+        let window = upgrade_weak!(window_weak);
+        let noise_file_entry = upgrade_weak!(noise_file_entry_weak);
+        handle_select_file(window, noise_file_entry, gtk::FileChooserAction::Open);
     });
 
     process_button.connect_clicked(

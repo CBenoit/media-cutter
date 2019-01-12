@@ -61,7 +61,3 @@ $ strip target/release/media_cutter
 On *Linux*, simply copy/move the executable in a folder present in the `$PATH` environment variable.
 `/usr/local/bin` is a good choice for manually installed (installed without package manager) softwares.
 
-## TODO
-
-- noise reduction with sox
-

@@ -1,5 +1,10 @@
-use std::process::{Command, Output, Stdio};
-use std::str::from_utf8;
+use std::{
+    env,
+    fs::create_dir_all,
+    path::PathBuf,
+    process::{Command, Output, Stdio},
+    str::from_utf8,
+};
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -15,8 +20,40 @@ lazy_static! {
 
 pub fn run(conf: &Config) -> Result<()> {
     let mut state = State::default();
+
+    if conf.noise_profile_file.is_some() && conf.noise_reduction_amount.is_some() {
+        let sox_noise_profile_args = make_sox_generate_noiseprof_args(conf)?;
+        let sox_clean_noise_args = make_sox_clean_noise_args(conf, &mut state)?;
+        if let Some(ref tmp_file_output) = state.sox_temporary_file_output {
+            create_dir_all(tmp_file_output.parent().ok_or_else(|| {
+                String::from("Unexpected error: couldn't create temporary directory")
+            })?)
+            .map_err(|e| format!("Could not create temporary directory.\nError: {}", e))?;
+
+            let sox_command = "sox";
+
+            let child = command_map_error(
+                Command::new(sox_command)
+                    .args(&sox_noise_profile_args[..])
+                    .stdout(Stdio::piped())
+                    .spawn(),
+                sox_command,
+                &sox_noise_profile_args,
+            )?;
+
+            command_map_error(
+                Command::new(sox_command)
+                    .args(&sox_clean_noise_args[..])
+                    .stdin(child.stdout.unwrap())
+                    .output(),
+                sox_command,
+                &sox_clean_noise_args,
+            )?;
+        }
+    }
+
     if conf.peak_normalization {
-        let args = make_detect_max_volume_args(conf);
+        let args = make_ffmpeg_detect_max_volume_args(conf);
         let output = run_command_and_get_output("ffmpeg", &args)?;
         if let Some(caps) = MAX_VOLUME_RE.captures(from_utf8(&output.stderr).unwrap()) {
             // pattern matched by the regex should be parsable into f64, hence unwrap.
@@ -25,8 +62,9 @@ pub fn run(conf: &Config) -> Result<()> {
     }
 
     let command_name = if conf.preview { "ffplay" } else { "ffmpeg" };
-    let args = make_processing_args(conf, &state);
+    let args = make_ffmpeg_processing_args(conf, &state);
     let output = run_command_and_get_output(command_name, &args)?;
+
     if output.status.success() {
         Ok(())
     } else {
@@ -45,35 +83,97 @@ pub fn run(conf: &Config) -> Result<()> {
 
 struct State {
     max_volume_db: Option<f64>,
+    sox_temporary_file_output: Option<PathBuf>,
 }
 
 impl Default for State {
     fn default() -> Self {
         Self {
             max_volume_db: None,
+            sox_temporary_file_output: None,
         }
     }
 }
 
-fn run_command_and_get_output(command_name: &str, args: &Vec<String>) -> Result<Output> {
-    Command::new(command_name)
-        .args(&args[..])
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .map_err(|err| {
-            format!(
-                "Failed to start: {}\nCommand was: {} {}",
-                err,
-                command_name,
-                build_args_string(&args[..])
-            )
-        })
+fn command_map_error<T, E>(
+    result: std::result::Result<T, E>,
+    command_name: &str,
+    args: &Vec<String>,
+) -> Result<T>
+where
+    E: std::fmt::Display,
+{
+    result.map_err(|err| {
+        format!(
+            "Failed to start: {}\nCommand was: {} {}",
+            err,
+            command_name,
+            build_args_string(&args[..])
+        )
+    })
 }
 
-fn make_detect_max_volume_args(conf: &Config) -> Vec<String> {
-    let mut args = Vec::new();
+fn run_command_and_get_output(command_name: &str, args: &Vec<String>) -> Result<Output> {
+    command_map_error(
+        Command::new(command_name).args(&args[..]).output(),
+        command_name,
+        args,
+    )
+}
+
+fn make_sox_generate_noiseprof_args(conf: &Config) -> Result<Vec<String>> {
+    let mut args = Vec::with_capacity(3);
+    match conf.noise_profile_file {
+        Some(ref filename) => {
+            if filename == "" {
+                return Err(String::from("Error: no noise file provided."));
+            } else {
+                args.push(filename.clone()); // input noise file
+            }
+        }
+        None => {
+            return Err(String::from(
+                "Unexpected error: could not build noise profile generation command.",
+            ));
+        }
+    }
+    args.push(String::from("-n"));
+    args.push(String::from("noiseprof"));
+    Ok(args)
+}
+
+fn make_sox_clean_noise_args(conf: &Config, state: &mut State) -> Result<Vec<String>> {
+    let mut dir = env::temp_dir();
+    dir.push("media_cutter");
+    let input_file_pathbuf = PathBuf::from(conf.input_file.clone());
+    match input_file_pathbuf.file_name() {
+        Some(filename) => dir.push(filename),
+        None => {
+            return Err(String::from("Error: no input file provided."));
+        }
+    }
+    let output_file = dir.to_string_lossy().into_owned();
+
+    state.sox_temporary_file_output = Some(dir);
+
+    let mut args = Vec::with_capacity(5);
+    args.push(conf.input_file.clone()); // input file
+    args.push(output_file); // output file
+    args.push(String::from("noisered"));
+    args.push(String::from("-")); // take noise profile from stdin
+    match conf.noise_reduction_amount {
+        Some(amount) => args.push(amount.to_string()),
+        None => {
+            return Err(String::from(
+                "Unexpected error: could not build noise cleaning command.",
+            ));
+        }
+    }
+    Ok(args)
+}
+
+fn make_ffmpeg_detect_max_volume_args(conf: &Config) -> Vec<String> {
+    let mut args = Vec::with_capacity(15);
 
     args.push(String::from("-nostdin"));
 
@@ -99,8 +199,8 @@ fn make_detect_max_volume_args(conf: &Config) -> Vec<String> {
     args
 }
 
-fn make_processing_args(conf: &Config, state: &State) -> Vec<String> {
-    let mut args = Vec::new();
+fn make_ffmpeg_processing_args(conf: &Config, state: &State) -> Vec<String> {
+    let mut args = Vec::with_capacity(15);
 
     if !conf.preview {
         if conf.allow_overidde {
@@ -111,7 +211,12 @@ fn make_processing_args(conf: &Config, state: &State) -> Vec<String> {
     }
 
     args.push(String::from("-i"));
-    args.push(conf.input_file.clone());
+    if let Some(ref sox_output_file) = state.sox_temporary_file_output {
+        // use sox output file if applicable
+        args.push(sox_output_file.to_string_lossy().into_owned());
+    } else {
+        args.push(conf.input_file.clone());
+    }
 
     if conf.ignore_video {
         args.push(String::from("-vn"));
