@@ -5,7 +5,7 @@
 
 Licensed under the MIT license.
 
-![Media Cutter's main screen](https://i.imgur.com/saZrF5e.png)
+![Media Cutter's main screen](https://i.imgur.com/vTeNUAc.png)
 
 [ffmpeg](https://www.ffmpeg.org/) is used for most audio and video processing.
 [SoX](http://sox.sourceforge.net/) is an optional tool used for noise reduction filter.
@@ -22,8 +22,8 @@ the boiler-plate code required to handle ownership and borrowing in the numerous
 ## Dependencies
 
 - gtk 3.10
-- ffmpeg (tested with v4.1, but older might works perfectly as well. No new fancy feature is used to my knowledge)
-- **Optional**: sox (tested with v14.4, but again, older might works perfectly)
+- [ffmpeg](https://www.ffmpeg.org/) (tested with v4.1, but older might works perfectly as well. No new fancy feature is used to my knowledge)
+- **Optional**: [SoX](http://sox.sourceforge.net/) (tested with v14.4, but again, older might works perfectly)
 
 Present software was used and tested only on *Linux*.
 It might works on Windows too, but since aformentioned tools are directly used
@@ -54,7 +54,7 @@ $ strip target/release/media_cutter
 
 ## Pre-built binaries
 
-*Not yet available*.
+See released binaries [here](https://github.com/CBenoit/media-cutter/releases).
 
 ## Installing
 
