@@ -408,7 +408,7 @@ dependencies = [
 
 [[package]]
 name = "media_cutter"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "cpal 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
